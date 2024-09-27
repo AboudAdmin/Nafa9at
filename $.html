@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>حساب النفقات الشخصية</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 600px;
+            margin: 50px auto;
+            background-color: #fff;
+            padding: 20px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+        }
+
+        h1 {
+            margin-bottom: 20px; 
+            color: #333;
+        }
+
+        .expense-input {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"], input[type="number"], select {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex: 1;
+            margin-right: 5px;
+        }
+
+        input[type="date"] {
+            padding: 10px;
+            margin: 5px 0;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            flex-basis: 40%;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #5cb85c;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            flex-basis: 25%;
+            margin-left: 5px;
+        }
+
+        button:hover {
+            background-color: #4cae4c;
+        }
+
+        ul {
+            list-style-type: none;
+            padding: 0;
+            margin: 20px 0;
+        }
+
+        li {
+            background-color: #eee;
+            padding: 10px;
+            margin: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            border-radius: 4px;
+        }
+
+        li button {
+            background-color: #d9534f;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 5px;
+            cursor: pointer;
+        }
+
+        li button:hover {
+            background-color: #c9302c;
+        }
+
+        .total {
+            margin-top: 20px;
+            font-size: 20px;
+        }
+
+        .statistics {
+            margin-top: 30px;
+            text-align: left;
+        }
+
+        .chart {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-around;
+        }
+
+        .bar {
+            width: 50px;
+            background-color: #5cb85c;
+            display: inline-block;
+        }
+
+        #stats-container {
+            display: none;
+            margin-top: 20px;
+            text-align: left;
+        }
+
+        .nav-buttons {
+            margin-top: 20px;
+        }
+
+        .nav-buttons button {
+            background-color: #007bff;
+        }
+
+        .nav-buttons button:hover {
+            background-color: #0056b3;
+        }
+
+        @media (max-width: 600px) {
+            .expense-input {
+                flex-direction: column;
+            }
+
+            button {
+                flex-basis: 100%;
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>حساب النفقات الشخصية</h1>
+        <div class="expense-input">
+            <input type="text" id="expense-name" placeholder="وصف النفقات" required>
+            <input type="number" id="expense-amount" placeholder="المبلغ" required>
+            <select id="expense-category">
+                <option value="طعام">طعام</option>
+                <option value="مواصلات">مواصلات</option>
+                <option value="تسلية">تسلية</option>
+                <option value="فواتير">فواتير</option>
+                <option value="أخرى">أخرى</option>
+            </select>
+            <input type="date" id="expense-date" required>
+            <input type="text" id="expense-notes" placeholder="ملاحظات (اختياري)">
+            <select id="expense-type">
+                <option value="شهرية">شهرية</option>
+                <option value="سنوية">سنوية</option>
+            </select>
+            <button onclick="addExpense()">إضافة</button>
+        </div>
+        <ul id="expense-list"></ul>
+        <div class="total">
+            <h3>الإجمالي: <span id="total-amount">0</span> د.ت</h3>
+        </div>
+        <div class="nav-buttons">
+            <button onclick="showStatistics()">إحصائيات</button>
+            <button onclick="hideStatistics()">رجوع</button>
+        </div>
+        <div id="stats-container">
+            <h3>إحصائيات النفقات</h3>
+            <div id="monthly-stats"></div>
+            <div id="yearly-stats"></div>
+            <div class="chart" id="expense-chart"></div>
+        </div>
+    </div>
+    <script>
+        let totalAmount = 0;
+        const expenses = [];
+
+        // تعيين تاريخ اليوم تلقائيًا
+        const today = new Date();
+        const dd = String(today.getDate()).padStart(2, '0');
+        const mm = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyy = today.getFullYear();
+        document.getElementById("expense-date").value = `${yyyy}-${mm}-${dd}`;
+
+        function addExpense() {
+            const name = document.getElementById("expense-name").value;
+            const amount = parseFloat(document.getElementById("expense-amount").value);
+            const category = document.getElementById("expense-category").value;
+            const date = document.getElementById("expense-date").value;
+            const notes = document.getElementById("expense-notes").value;
+            const type = document.getElementById("expense-type").value;
+
+            if (name === "" || isNaN(amount) || date === "") {
+                alert("يرجى إدخال وصف صحيح ومبلغ صالح وتاريخ.");
+                return;
+            }
+
+            const expense = { name, amount, category, date, notes, type };
+            expenses.push(expense);
+
+            const li = document.createElement("li");
+            li.textContent = `${name} (${category}): ${amount} د.ت - ${date} - ${notes} [${type}]`;
+
+            const deleteButton = document.createElement("button");
+            deleteButton.textContent = "حذف";
+            deleteButton.onclick = function() {
+                totalAmount -= amount;
+                document.getElementById("total-amount").textContent = totalAmount;
+                expenses.splice(expenses.indexOf(expense), 1);
+                li.remove();
+                updateStatistics();
+            };
+
+            li.appendChild(deleteButton);
+            document.getElementById("expense-list").appendChild(li);
+
+            totalAmount += amount;
+            document.getElementById("total-amount").textContent = totalAmount;
+
+            document.getElementById("expense-name").value = "";
+            document.getElementById("expense-amount").value = "";
+            document.getElementById("expense-notes").value = "";
+            updateStatistics();
+        }
+
+        function updateStatistics() {
+            const monthlyStats = {};
+            const yearlyStats = {};
+            expenses.forEach(exp => {
+                const date = new Date(exp.date);
+                const monthYear = `${date.getMonth() + 1}-${date.getFullYear()}`;
+                const year = date.getFullYear();
+
+                if (!monthlyStats[monthYear]) {
+                    monthlyStats[monthYear] = 0;
+                }
+                monthlyStats[monthYear] += exp.amount;
+
+                if (!yearlyStats[year]) {
+                    yearlyStats[year] = 0;
+                }
+                yearlyStats[year] += exp.amount;
+            });
+
+            displayMonthlyStats(monthlyStats);
+            displayYearlyStats(yearlyStats);
+        }
+
+        function displayMonthlyStats(stats) {
+            const monthlyDiv = document.getElementById("monthly-stats");
+            monthlyDiv.innerHTML = '<h4>الإحصائيات الشهرية:</h4>';
+            for (const [monthYear, amount] of Object.entries(stats)) {
+                monthlyDiv.innerHTML += `<p>${monthYear}: ${amount} د.ت</p>`;
+            }
+        }
+
+        function displayYearlyStats(stats) {
+            const yearlyDiv = document.getElementById("yearly-stats");
+            yearlyDiv.innerHTML = '<h4>الإحصائيات السنوية:</h4>';
+            for (const [year, amount] of Object.entries(stats)) {
+                yearlyDiv.innerHTML += `<p>${year}: ${amount} د.ت</p>`;
+            }
+        }
+
+        function showStatistics() {
+            document.getElementById("stats-container").style.display = "block";
+            document.getElementById("expense-list").style.display = "none";
+            document.getElementById("total-amount").style.display = "none";
+        }
+
+        function hideStatistics() {
+            document.getElementById("stats-container").style.display = "none";
+            document.getElementById("expense-list").style.display = "block";
+            document.getElementById("total-amount").style.display = "block";
+        }
+    </script>
+</body>
+</html>
